@@ -303,6 +303,10 @@ body {
         transform: rotate(360deg);
     }
 }
+main > aside, 
+.left-sidebar-info {
+    display: none !important;
+}
 /* --- GLASSMORPHISM CONTAINER --- */
 .glass-container {
     background: var(--glass-bg);
