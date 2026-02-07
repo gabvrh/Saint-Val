@@ -2,10 +2,96 @@ document.addEventListener('DOMContentLoaded', () => {
     /* --- CONFIGURATION --- */
     const TARGET_DATE = new Date('2026-02-14T20:00:00').getTime();
     const PASSWORD = "1601";
-    const SECRET_PHRASE = ["Le", "jour", "où", "tout", "a", "commencé...", "❤️"];
+    const SECRET_PHRASE = ["Un", "commentaire", "sur", "TikTok", "et", "tout", "a", "changé."];
+    const STEP_LABELS = [
+        "Intro",
+        "Code secret",
+        "Question Valentine",
+        "Analyse des sentiments",
+        "Countdown",
+        "Quiz",
+        "BD",
+        "Message secret",
+        "Audio",
+        "Ticket",
+        "Lettre",
+        "Final"
+    ];
     // --- STATE MANAGEMENT ---
     let currentStep = parseInt(localStorage.getItem('vday_step_v3')) || 0; // v3 versioning to force reset logic if needed by user manually clearing
     let isMusicPlaying = false;
+    let audioUnlocked = false;
+
+    // --- AUDIO MANAGER (SFX) ---
+    const AudioManager = (() => {
+        const base = 'assets/sfx/';
+        const files = {
+            click_soft: 'click.mp3',
+            success_chime: 'success.mp3',
+            error_soft: 'error.mp3',
+            boop: 'boop.mp3',
+            ding: 'ding.mp3',
+            bloop: 'bloop.mp3',
+            sparkle: 'sparkle.mp3',
+            unlock: 'unlock.mp3',
+            whoosh: 'whoosh.mp3',
+            scratch_loop: 'scratch.mp3',
+            reveal: 'reveal.mp3'
+        };
+        const cooldowns = {};
+        const sounds = {};
+        const volume = 0.35;
+        const mutedKey = 'vday_sfx_muted';
+        let muted = localStorage.getItem(mutedKey) === '1';
+
+        Object.keys(files).forEach((k) => {
+            const a = new Audio(base + files[k]);
+            a.preload = 'auto';
+            a.volume = volume;
+            sounds[k] = a;
+        });
+
+        function setMuted(v) {
+            muted = !!v;
+            localStorage.setItem(mutedKey, muted ? '1' : '0');
+        }
+        function isMuted() { return muted; }
+        function play(name, opts = {}) {
+            if (!audioUnlocked) audioUnlocked = true;
+            if (muted) return;
+            const now = Date.now();
+            const cd = opts.cooldown ?? 120;
+            if (cooldowns[name] && now - cooldowns[name] < cd) return;
+            cooldowns[name] = now;
+            const snd = sounds[name];
+            if (!snd) return;
+            try {
+                snd.pause();
+                snd.currentTime = 0;
+                snd.volume = opts.volume ?? volume;
+                snd.playbackRate = opts.rate ?? 1;
+                snd.play().catch(() => {});
+            } catch (_) {}
+        }
+        function loop(name, on) {
+            const snd = sounds[name];
+            if (!snd) return;
+            if (!audioUnlocked || muted) return;
+            snd.loop = !!on;
+            snd.volume = 0.2;
+            if (on) snd.play().catch(() => {});
+            else {
+                snd.pause();
+                snd.currentTime = 0;
+            }
+        }
+        return { play, loop, setMuted, isMuted };
+    })();
+
+    function initAudioUnlock() {
+        if (audioUnlocked) return;
+        audioUnlocked = true;
+    }
     // --- UTILS ---
     function initMagicCursor() {
         // Create the main cursor element
@@ -85,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- NAVIGATION ENGINE ---
     function showStep(stepNumber) {
+        currentStep = stepNumber;
         localStorage.setItem('vday_step_v3', stepNumber);
         const currentActive = document.querySelector('.step.active');
         const targetStepId = `step-${stepNumber}`;
@@ -111,7 +198,16 @@ document.addEventListener('DOMContentLoaded', () => {
             revealNewStep(stepNumber);
         }
         // Global UI updates based on step
+        updateProgress(stepNumber);
+        const uxBar = document.querySelector('.ux-bar');
+        if (uxBar) {
+            if (stepNumber >= 4) uxBar.classList.add('show');
+            else uxBar.classList.remove('show');
+        }
         if (stepNumber > 0) document.getElementById('music-player').classList.remove('hidden');
+        if (currentActive && currentActive.id !== targetStepId) {
+            AudioManager.play('whoosh', { cooldown: 150, volume: 0.25 });
+        }
         switch (stepNumber) {
             case 0: initLogin(); break;
             case 1: initSmartNoButton(); break;
@@ -144,17 +240,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const lockContainer = document.querySelector('.lock-container');
         const validate = () => {
             if (input.value === PASSWORD) {
+                initAudioUnlock();
                 // Unlock Animation
                 lockIcon.className = "fa-solid fa-lock-open";
                 lockContainer.classList.add('unlocked');
                 input.style.borderColor = "#2ecc71";
+                AudioManager.play('success_chime');
                 setTimeout(() => {
                     playMusic(); // Auto start music
                     showStep(1);
                 }, 1000);
             } else if (input.value.length === 4) {
+                initAudioUnlock();
                 // Error Animation
                 error.innerText = "Non, ce n'est pas ça...";
+                AudioManager.play('error_soft');
                 input.parentElement.classList.add('shake');
                 input.value = '';
                 setTimeout(() => {
@@ -172,92 +272,219 @@ document.addEventListener('DOMContentLoaded', () => {
     function initSmartNoButton() {
         const btnNo = document.getElementById('btn-no');
         const btnYes = document.getElementById('btn-yes');
-        let moveCount = 0;
-        let scale = 1;
-        const messages = [
-            "Non ?",
-            "Tu es sûr(e) ?",
-            "Vraiment ?",
-            "Dernière chance...",
-            "Allez...",
-            "Ne sois pas cruel(le) !",
-            "Juste un clic !",
-            "Tu me fends le cœur 💔",
-            "Pitié...",
-            "Bon, j'abandonne..."
+        const zone = document.getElementById('no-zone');
+        const feedback = document.getElementById('no-feedback');
+        const hint = document.getElementById('no-hint');
+        if (!btnNo || !btnYes || !zone) return;
+        // Force absolute positioning for dodge behavior
+        zone.classList.add('no-active');
+        btnNo.style.position = 'absolute';
+        btnNo.style.left = '0px';
+        btnNo.style.top = '0px';
+        let attempts = 0;
+        let curX = 0;
+        let curY = 0;
+        let curScale = 1;
+        let curRot = 0;
+        let lastMoveTs = 0;
+        const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const feedbackMessages = [
+            "Vraiment ? 😏",
+            "Essaie encore…",
+            "Nope 😌",
+            "Tu es sûre ?",
+            "Je fais semblant de ne pas avoir vu.",
+            "On sait tous les deux que tu vas dire oui."
         ];
-        const teleport = (e) => {
+        const buttonTexts = [
+            "Non",
+            "Non 😇",
+            "Euh… non",
+            "Nope",
+            "Impossible",
+            "J’essaie",
+            "Toujours non ?"
+        ];
+        function clamp(val, min, max) {
+            return Math.min(max, Math.max(min, val));
+        }
+        function zoneRect() {
+            return zone.getBoundingClientRect();
+        }
+        function initPosition() {
+            const z = zone.getBoundingClientRect();
+            const b = btnNo.getBoundingClientRect();
+            // Keep current visual position from flex, then switch to absolute translate
+            curX = clamp(b.left - z.left, 0, Math.max(0, z.width - b.width));
+            curY = clamp(b.top - z.top, 0, Math.max(0, z.height - b.height));
+            btnNo.style.left = '0px';
+            btnNo.style.top = '0px';
+            btnNo.style.transform = `translate(${curX}px, ${curY}px) scale(${curScale}) rotate(${curRot}deg)`;
+        }
+        function moveRandom() {
+            const z = zoneRect();
+            const b = btnNo.getBoundingClientRect();
+            const maxX = Math.max(0, z.width - b.width);
+            const maxY = Math.max(0, z.height - b.height);
+            const x = Math.random() * maxX;
+            const y = Math.random() * maxY;
+            curX = clamp(x, 0, maxX);
+            curY = clamp(y, 0, maxY);
+            btnNo.style.transform = `translate(${curX}px, ${curY}px) scale(${curScale}) rotate(${curRot}deg)`;
+        }
+        function updateEffects() {
+            if (attempts >= 7) {
+                curScale = 0.75;
+            } else if (attempts >= 5) {
+                curScale = 0.9;
+            } else if (attempts >= 3) {
+                curScale = 0.95;
+            } else {
+                curScale = 1;
+            }
+            if (attempts >= 5) {
+                curRot = (Math.random() > 0.5 ? 1 : -1) * (prefersReduced ? 2 : 6);
+                btnNo.style.boxShadow = "0 8px 20px rgba(255, 154, 158, 0.35)";
+            } else {
+                curRot = 0;
+                btnNo.style.boxShadow = "";
+            }
+            if (hint && attempts >= 7) hint.classList.add('show');
+        }
+        function taunt() {
+            if (feedback) feedback.textContent = feedbackMessages[attempts % feedbackMessages.length];
+            btnNo.textContent = buttonTexts[attempts % buttonTexts.length];
+        }
+        function handleAttempt(e) {
             if (currentStep !== 1) return;
-            if (btnNo.classList.contains('btn-sad')) return;
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            attempts += 1;
+            taunt();
+            updateEffects();
+            moveRandom();
+            AudioManager.play('boop', { cooldown: 140, volume: 0.22 });
+        }
+        function isNearButton(clientX, clientY) {
+            const b = btnNo.getBoundingClientRect();
+            const cx = b.left + b.width / 2;
+            const cy = b.top + b.height / 2;
+            const dx = clientX - cx;
+            const dy = clientY - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            return dist < (prefersReduced ? 120 : 80);
+        }
+        function withinZone(clientX, clientY) {
+            const z = zoneRect();
+            return clientX >= z.left && clientX <= z.right && clientY >= z.top && clientY <= z.bottom;
+        }
+        function onPointerMove(e) {
+            if (currentStep !== 1) return;
+            const now = Date.now();
+            const cooldown = prefersReduced ? 400 : 180;
+            if (now - lastMoveTs < cooldown) return;
+            if (!withinZone(e.clientX, e.clientY)) return;
+            if (isNearButton(e.clientX, e.clientY)) {
+                lastMoveTs = now;
+                handleAttempt(e);
+            }
+        }
+        document.addEventListener('pointermove', onPointerMove);
+        zone.addEventListener('pointerdown', (e) => {
+            if (currentStep !== 1) return;
+            if (isNearButton(e.clientX, e.clientY)) {
+                handleAttempt(e);
+            }
+        }, { passive: false });
+        window.addEventListener('resize', initPosition);
+        btnNo.addEventListener('pointerdown', handleAttempt, { passive: false });
+        btnNo.addEventListener('pointerenter', handleAttempt, { passive: false });
+        btnNo.addEventListener('mouseenter', handleAttempt, { passive: false });
+        btnNo.addEventListener('touchstart', handleAttempt, { passive: false });
+        btnNo.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            // Text Update
-            if (moveCount < messages.length) {
-                btnNo.innerText = messages[moveCount];
-            }
-            // Transform to Emoji after ~10 moves
-            if (moveCount >= 10) {
-                btnNo.innerText = "😢";
-                btnNo.classList.add('btn-sad');
-                return;
-            }
-            moveCount++;
-            // Switch to fixed if not already (first move)
-            if (btnNo.style.position !== 'fixed') {
-                btnNo.style.position = 'fixed';
-            }
-            const winW = window.innerWidth;
-            const winH = window.innerHeight;
-            // Approximate size
-            const btnW = 120;
-            const btnH = 50;
-            const newX = Math.random() * (winW - btnW - 40) + 20;
-            const newY = Math.random() * (winH - btnH - 40) + 20;
-            btnNo.style.left = `${newX}px`;
-            btnNo.style.top = `${newY}px`;
-            // Shrink
-            scale *= 0.95;
-            btnNo.style.transform = `scale(${scale})`;
-        };
-        // Events
-        btnNo.addEventListener('mouseover', teleport);
-        btnNo.addEventListener('touchstart', teleport);
-        btnNo.addEventListener('click', teleport);
+        });
         btnYes.onclick = () => {
             celebrate();
             showStep(2);
         }
+        requestAnimationFrame(initPosition);
     }
     // --- STEP 2: TYPEWRITER (Bug Fix & New Style) ---
+    let introTypingTimeout = null;
+    let isIntroTyping = false;
+    let matchAnimFrame = null;
+    function animateMatchProgress(durationMs = 1400, onDone) {
+        const wrap = document.getElementById('match-progress');
+        const fill = document.getElementById('match-fill');
+        const value = document.getElementById('match-value');
+        if (!wrap || !fill || !value) return;
+        if (matchAnimFrame) cancelAnimationFrame(matchAnimFrame);
+        wrap.classList.add('show');
+        const start = performance.now();
+        const animate = (now) => {
+            const t = Math.min(1, (now - start) / durationMs);
+            const eased = 1 - Math.pow(1 - t, 3);
+            const pct = Math.round(eased * 100);
+            fill.style.width = `${pct}%`;
+            value.textContent = String(pct);
+            if (t < 1) {
+                matchAnimFrame = requestAnimationFrame(animate);
+            } else if (onDone) {
+                onDone();
+            }
+        };
+        matchAnimFrame = requestAnimationFrame(animate);
+    }
     function startTypewriter() {
-        const text = "Analyse des sentiments en cours...\\nCorrespondance trouvée : 100%.\\n\\nBienvenue dans ton espace privé, mon cœur.";
+        const text = "Analyse des sentiments en cours...";
         const el = document.getElementById('intro-typed-text');
         const nextBtn = document.getElementById('btn-intro-next');
         const cursor = document.querySelector('.cursor');
+        const matchWrap = document.getElementById('match-progress');
+        const matchFill = document.getElementById('match-fill');
+        const matchValue = document.getElementById('match-value');
+        const finalMsg = document.getElementById('intro-final-message');
+        if (!el || !nextBtn) return;
+        if (isIntroTyping) return;
         // Reset state
+        if (introTypingTimeout) clearTimeout(introTypingTimeout);
         el.innerHTML = "";
         nextBtn.classList.add('hidden');
-        cursor.style.display = 'inline';
+        if (cursor) cursor.style.display = 'none';
+        if (matchWrap && matchFill && matchValue) {
+            matchWrap.classList.remove('show');
+            matchFill.style.width = '0%';
+            matchValue.textContent = '0';
+        }
+        if (finalMsg) finalMsg.classList.remove('show');
         let i = 0;
+        isIntroTyping = true;
         function type() {
             if (i < text.length) {
-                el.innerHTML += text.charAt(i) === '\\n' ? '<br>' : text.charAt(i);
+                el.insertAdjacentHTML('beforeend', text.charAt(i) === '\n' ? '<br>' : text.charAt(i));
                 i++;
-                setTimeout(type, 50); // Slightly slower for "letter" feel
+                introTypingTimeout = setTimeout(type, 50); // Slightly slower for "letter" feel
             } else {
-                // End of typing
-                setTimeout(() => {
-                    cursor.style.display = 'none';
-                    nextBtn.classList.remove('hidden'); // SHOW BUTTON
-                    // Add a pulse effect to draw attention
-                    nextBtn.classList.add('pulse-effect');
-                }, 500);
+                isIntroTyping = false;
+                introTypingTimeout = setTimeout(() => {
+                    if (cursor) cursor.style.display = 'none';
+                    animateMatchProgress(1400, () => {
+                        if (finalMsg) finalMsg.classList.add('show');
+                        setTimeout(() => {
+                            nextBtn.classList.remove('hidden'); // SHOW BUTTON
+                            // Add a pulse effect to draw attention
+                            nextBtn.classList.add('pulse-effect');
+                            AudioManager.play('sparkle', { volume: 0.25 });
+                        }, 300);
+                    });
+                }, 300);
             }
         }
-        // Anti-glitch: only start if button is currently hidden (meaning not already done)
-        if (nextBtn.classList.contains('hidden')) {
-            type();
-        }
+        type();
     }
     // --- STEP 3: TIMER ---
     function startTimer() {
@@ -269,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelector('.desc').innerText = "C'est l'heure !";
                 document.getElementById('timer').style.display = 'none';
                 btnEnd.classList.remove('hidden');
+                AudioManager.play('unlock', { volume: 0.3 });
                 return true;
             }
             document.getElementById('days').innerText = Math.floor(dist / (1000 * 60 * 60 * 24));
@@ -290,9 +518,9 @@ document.addEventListener('DOMContentLoaded', () => {
         {
             question: "Qui est le plus beau/bello ?",
             options: [
-                { text: "Charles Leclerc", img: "https://placehold.co/100x100?text=Leclerc" },
-                { text: "Damon Salvatore", img: "https://placehold.co/100x100?text=Damon" },
-                { text: "Lucille Cluzet", img: "https://placehold.co/100x100?text=Lucille" }
+                { text: "Charles Leclerc", img: "assets/leclerc.jpg" },
+                { text: "Damon Salvatore", img: "assets/damon.jpg" },
+                { text: "Lucille Cluzet", img: "assets/lucille.jpg" }
             ],
             answer: 2
         },
@@ -308,6 +536,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     ];
     let currentQuizIndex = 0;
+    const quizAttempts = {};
+    const quizPositive = ["Bien vu 😌", "Exact ❤️", "Tu me connais trop bien", "Bonne réponse"];
+    const quizNegative = ["Hmm… presque 😌", "Pas cette fois", "Joli essai", "Indice : écoute ton intuition"];
     function initQuiz() {
         currentQuizIndex = 0;
         loadQuestion();
@@ -353,35 +584,72 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkDynamicAnswer(btn, isCorrect) {
         const feedback = document.getElementById('quiz-feedback');
         const allBtns = document.querySelectorAll('.btn-option');
+        const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         // Disable clicks
         allBtns.forEach(b => b.style.pointerEvents = 'none');
-        if (isCorrect) {
-            btn.style.background = '#d1fae5';
-            btn.style.borderColor = '#10b981';
-            feedback.innerHTML = "<span style='color:#10b981'>Bravo ! 🎉</span>";
+        const qKey = `q_${currentQuizIndex}`;
+        quizAttempts[qKey] = (quizAttempts[qKey] || 0) + (isCorrect ? 0 : 1);
+        const allowPass = !isCorrect && quizAttempts[qKey] >= 3;
+
+        if (isCorrect || allowPass) {
+            // Visual correct feedback
+            btn.classList.add('correct');
+            if (!btn.querySelector('.btn-mark')) {
+                const mark = document.createElement('span');
+                mark.className = 'btn-mark';
+                mark.textContent = '❤️';
+                btn.appendChild(mark);
+            }
+            if (feedback) {
+                const msg = quizPositive[Math.floor(Math.random() * quizPositive.length)];
+                feedback.textContent = msg;
+            }
+            AudioManager.play('ding', { volume: 0.25 });
+            // Micro particles
+            if (!prefersReduced) {
+                const particles = document.createElement('div');
+                particles.className = 'success-particles';
+                btn.style.position = 'relative';
+                for (let i = 0; i < 6; i++) {
+                    const p = document.createElement('i');
+                    p.textContent = ['❤️', '✨', '•'][i % 3];
+                    p.style.left = `${10 + Math.random() * 80}%`;
+                    p.style.top = `${10 + Math.random() * 50}%`;
+                    particles.appendChild(p);
+                }
+                btn.appendChild(particles);
+                setTimeout(() => particles.remove(), 850);
+            }
+            setTimeout(() => {
+                btn.classList.remove('correct');
+                const mark = btn.querySelector('.btn-mark');
+                if (mark) mark.remove();
+            }, 400);
             // Next Question or Finish
             setTimeout(() => {
+                if (feedback) feedback.textContent = "";
                 currentQuizIndex++;
                 if (currentQuizIndex < quizData.length) {
                     loadQuestion();
                 } else {
-                    // Quiz Finished
                     document.getElementById('quiz-progress').style.width = '100%';
                     celebrate();
                     showStep(5);
                 }
-            }, 1000); // 1s delay
+            }, 650);
         } else {
-            // Wrong Answer
-            btn.style.background = '#fee2e2';
-            btn.style.borderColor = '#ff6b6b';
-            btn.classList.add('shake');
-            feedback.innerHTML = "<span style='color:#ff6b6b'>Oups... Réessaie ! 🙈</span>";
+            // Wrong Answer gentle feedback
+            btn.classList.add('wrong');
+            if (!prefersReduced) btn.classList.add('shake');
+            if (feedback) {
+                const msg = quizNegative[Math.floor(Math.random() * quizNegative.length)];
+                feedback.textContent = msg;
+            }
+            AudioManager.play('bloop', { volume: 0.22 });
             setTimeout(() => {
+                btn.classList.remove('wrong');
                 btn.classList.remove('shake');
-                btn.style.background = 'white';
-                btn.style.borderColor = 'rgba(0,0,0,0.05)';
-                feedback.innerHTML = "";
+                if (feedback) feedback.textContent = "";
                 allBtns.forEach(b => b.style.pointerEvents = 'all');
             }, 800);
         }
@@ -479,8 +747,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 y: (e.clientY || e.touches[0].clientY) - rect.top
             };
         };
-        canvas.onmousedown = canvas.ontouchstart = (e) => { isDrawing = true; };
-        canvas.onmouseup = canvas.ontouchend = () => { isDrawing = false; };
+        let scratchTimeout = null;
+        canvas.onmousedown = canvas.ontouchstart = (e) => {
+            isDrawing = true;
+            AudioManager.play('scratch_loop', { volume: 0.2, cooldown: 50 });
+            if (scratchTimeout) clearTimeout(scratchTimeout);
+            scratchTimeout = setTimeout(() => {
+                AudioManager.loop('scratch_loop', false);
+            }, 1000);
+        };
+        canvas.onmouseup = canvas.ontouchend = () => {
+            isDrawing = false;
+            AudioManager.loop('scratch_loop', false);
+            if (scratchTimeout) clearTimeout(scratchTimeout);
+        };
         canvas.onmousemove = canvas.ontouchmove = (e) => {
             if (!isDrawing) return;
             e.preventDefault();
@@ -500,6 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     canvas.style.display = 'none';
                     celebrate();
+                    AudioManager.play('reveal', { volume: 0.3 });
                     document.getElementById('btn-scratch-next').classList.remove('hidden');
                 }, 600);
             }
@@ -656,10 +937,15 @@ Ton Valentin.`;
             origin: { y: 0.6 },
             colors: ['#ff9a9e', '#fecfef', '#ffffff']
         });
+        AudioManager.play('sparkle', { volume: 0.25 });
     }
     // --- NAVIGATION CLICKS ---
     document.querySelectorAll('.next-step').forEach(btn => {
-        btn.addEventListener('click', (e) => showStep(parseInt(e.target.dataset.next)));
+        btn.addEventListener('click', (e) => {
+            initAudioUnlock();
+            AudioManager.play('click_soft', { volume: 0.2 });
+            showStep(parseInt(e.target.dataset.next));
+        });
     });
     // --- STEP 5: COMIC READER ---
     function initComicReader() {
@@ -754,4 +1040,48 @@ Ton Valentin.`;
             location.reload();
         }
     };
+
+    // --- UX PROGRESS ---
+    function updateProgress(stepNumber) {
+        const fill = document.getElementById('ux-progress-fill');
+        const label = document.getElementById('ux-progress-label');
+        if (!fill || !label) return;
+        const total = STEP_LABELS.length;
+        const idx = Math.min(stepNumber + 1, total);
+        const pct = Math.round((idx / total) * 100);
+        fill.style.width = `${pct}%`;
+        label.textContent = `Chapitre ${idx} / ${total} — ${STEP_LABELS[idx - 1] || ''}`;
+        const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!prefersReduced) {
+            const toast = document.getElementById('ux-toast');
+            if (toast) {
+                toast.textContent = "Étape validée ✅";
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 1000);
+            }
+        }
+    }
+
+    // --- SFX TOGGLE ---
+    const sfxToggle = document.getElementById('sfx-toggle');
+    if (sfxToggle) {
+        const syncIcon = () => {
+            sfxToggle.textContent = AudioManager.isMuted() ? '🔇' : '🔊';
+        };
+        syncIcon();
+        sfxToggle.addEventListener('click', () => {
+            initAudioUnlock();
+            const next = !AudioManager.isMuted();
+            AudioManager.setMuted(next);
+            syncIcon();
+            if (!next) AudioManager.play('click_soft', { volume: 0.2 });
+        });
+    }
+
+    // Unlock audio on first interaction
+    document.addEventListener('pointerdown', (e) => {
+        initAudioUnlock();
+        AudioManager.play('click_soft', { volume: 0.15, cooldown: 90 });
+    });
+    document.addEventListener('keydown', initAudioUnlock, { once: true });
 });
