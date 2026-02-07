@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "Code secret",
         "Question Valentine",
         "Analyse des sentiments",
-        "Countdown",
+        "",
         "Quiz",
         "BD",
         "Message secret",
