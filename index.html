@@ -6,13 +6,23 @@
     <title>Valentine ❤️</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Dancing+Script:wght@400;600;700&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- UX BAR -->
+    <div class="ux-bar">
+        <div class="ux-progress">
+            <div class="ux-progress-track">
+                <div id="ux-progress-fill" class="ux-progress-fill"></div>
+            </div>
+            <div id="ux-progress-label" class="ux-progress-label">Chapitre 1 / 11</div>
+        </div>
+        <button id="sfx-toggle" class="sfx-toggle" aria-label="Activer/désactiver le son">🔊</button>
+    </div>
+    <div id="ux-toast" class="ux-toast" aria-live="polite"></div>
     <!-- CINEMATIC INTRO -->
     <div id="cinematic-intro">
         <div class="intro-content">
@@ -41,7 +51,7 @@
             <span class="music-title">L-O-V-E</span>
         </div>
         <audio id="bg-music" loop>
-            <source src="https://drive.google.com/file/d/1CCUPFWsTpL69t7VeZlpugNKn2ixzGk1r/view?usp=drive_link" type="audio/mpeg">
+            <source src="assets/love-nat-king-cole.mp3" type="audio/mpeg">
         </audio>
     </div>
     <main id="app" class="glass-container">
@@ -67,17 +77,26 @@
             <h1>Une question...</h1>
             <p class="big-question">Veux-tu être ma Valentine ? 🌹</p>
             
-            <div class="interaction-area">
+            <div class="interaction-area" id="no-zone">
                 <button id="btn-yes" class="btn-primary pulse-effect">OUI, avec plaisir ! 😍</button>
                 <button id="btn-no" class="btn-ghost">Non, pas envie</button>
             </div>
+            <div id="no-feedback" class="no-feedback" aria-live="polite"></div>
+            <div id="no-hint" class="no-hint">Indice : le bon choix est à droite ❤️</div>
         </section>
         <!-- STEP 2: INTRO (Letter Style) -->
         <section id="step-2" class="step hidden">
             <div class="icon-header"><i class="fa-regular fa-envelope" style="font-size: 2rem; color: var(--primary); margin-bottom: 20px;"></i></div>
             <h2>Un message pour toi</h2>
             <div class="letter-container">
-                <p id="intro-typed-text"></p><span class="cursor">|</span>
+                <p id="intro-typed-text"></p>
+                <div class="match-progress" id="match-progress">
+                    <div class="match-track">
+                        <div class="match-fill" id="match-fill"></div>
+                    </div>
+                    <div class="match-label">Correspondance trouvée : <span id="match-value">0</span>%</div>
+                </div>
+                <div id="intro-final-message" class="intro-final">Bienvenue dans ton espace privé, mon cœur.</div>
             </div>
             <button class="btn-primary hidden next-step" id="btn-intro-next" data-next="3">Lire la suite ✨</button>
         </section>
@@ -94,7 +113,7 @@
             </div>
             
             <button id="btn-timer-end" class="btn-primary hidden pulse-effect next-step" data-next="4">DÉCOUVRIR 🎁</button>
-            <button id="force-skip-timer" class="dev-skip"></button>
+            <button id="force-skip-timer" class="dev-skip">Passer l'attente</button>
         </section>
         <!-- STEP 4: QUIZ -->
         <section id="step-4" class="step hidden">
