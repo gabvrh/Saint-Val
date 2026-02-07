@@ -68,6 +68,90 @@ body {
     overflow-x: hidden;
     position: relative;
 }
+/* UX Bar */
+.ux-bar {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(520px, 92vw);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-12px);
+    transition: opacity 300ms ease, transform 300ms ease;
+}
+.ux-bar.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+.ux-progress {
+    flex: 1;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 14px;
+    padding: 10px 12px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+.ux-progress-track {
+    height: 8px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.ux-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ff9a9e, #fecfef);
+    border-radius: 999px;
+    transition: width 600ms ease;
+}
+.ux-progress-label {
+    margin-top: 6px;
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+.sfx-toggle {
+    background: rgba(255,255,255,0.75);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 12px;
+    width: 44px;
+    height: 40px;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+.ux-toast {
+    position: fixed;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    background: rgba(255,255,255,0.85);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    color: var(--text);
+    opacity: 0;
+    transition: opacity 300ms ease, transform 300ms ease;
+    z-index: 300;
+}
+.ux-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+    .ux-progress-fill { transition: none; }
+    .ux-toast { transition: none; }
+}
 /* --- MOVING ORBS BACKGROUND --- */
 #background-wrap {
     position: fixed;
@@ -456,17 +540,60 @@ button {
     position: relative;
     height: 200px;
     display: flex;
-    flex-direction: row;
-    /* Changed from column */
     align-items: center;
     justify-content: center;
     gap: 20px;
+}
+#no-zone {
+    display: flex;
+    height: 180px;
+    width: 100%;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+#btn-yes {
+    position: relative;
+    z-index: 2;
 }
 #btn-no {
     position: relative;
     transition: all 0.2s ease;
     z-index: 1000;
     font-size: 0.9rem;
+    will-change: transform;
+    user-select: none;
+    touch-action: none;
+}
+/* Activate dodge mode after JS initializes */
+#no-zone.no-active #btn-no {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+.no-feedback {
+    min-height: 22px;
+    margin-top: 10px;
+    font-size: 0.95rem;
+    color: var(--text-light);
+}
+.no-hint {
+    margin-top: 6px;
+    font-size: 0.9rem;
+    color: var(--primary);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.no-hint.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+    #btn-no {
+        transition: none;
+    }
 }
 /* Sad Emoji Transformation Class */
 .btn-sad {
@@ -503,10 +630,57 @@ button {
     font-size: 1.1rem;
     color: #555;
     line-height: 1.8;
+    white-space: pre-line;
 }
 .cursor {
     color: var(--primary);
     animation: blink 1s infinite;
+    display: none;
+}
+/* Step 2 progress */
+.match-progress {
+    margin: 10px 0 25px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.match-progress.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+.match-track {
+    width: 100%;
+    height: 10px;
+    background: #f2e8ec;
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.08);
+}
+.match-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ff9a9e, #fecfef);
+    border-radius: 999px;
+    transition: width 0.2s ease;
+}
+.match-label {
+    margin-top: 8px;
+    font-size: 0.95rem;
+    color: var(--text-light);
+}
+.intro-final {
+    margin-top: 14px;
+    font-family: var(--font-hand);
+    font-size: 1.4rem;
+    color: var(--text);
+    text-align: center;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.intro-final.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 @keyframes blink {
     0%,
@@ -588,6 +762,67 @@ button {
     transition: 0.3s;
     color: var(--text);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+.btn-option.correct {
+    background: #e6f6ea;
+    border-color: #4CAF50;
+    transform: scale(1.05);
+}
+.btn-option.wrong {
+    background: #FFCDD2;
+    border-color: #f3a7ad;
+}
+.btn-option .btn-mark {
+    margin-left: 8px;
+    font-size: 1rem;
+}
+.shake {
+    animation: shakeX 240ms ease-in-out;
+}
+@keyframes shakeX {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    50% { transform: translateX(4px); }
+    75% { transform: translateX(-3px); }
+    100% { transform: translateX(0); }
+}
+.success-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+.success-particles i {
+    position: absolute;
+    font-size: 0.9rem;
+    animation: pop 800ms ease-out forwards;
+}
+@keyframes pop {
+    0% { transform: translateY(0) scale(0.8); opacity: 0; }
+    30% { opacity: 1; }
+    100% { transform: translateY(-18px) scale(1.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .shake { animation: none; }
+    .btn-option.correct { transform: none; }
+    .success-particles { display: none; }
+}
+.btn-option.has-image {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.btn-option.has-image img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    flex: 0 0 64px;
+}
+.btn-option.has-image span {
+    display: inline-block;
+    text-align: left;
 }
 .btn-option:hover {
     border-color: var(--primary);
@@ -1145,3 +1380,4 @@ body.final-mode {
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
+
