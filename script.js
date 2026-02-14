@@ -4,14 +4,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const PASSWORD = "1601";
     const SECRET_PHRASE = ["Un", "commentaire", "sur", "TikTok", "et", "tout", "a", "changé."];
     const STEP_LABELS = [
-        "Intro",
         "Code secret",
         "Question Valentine",
         "Analyse des sentiments",
-        "",
+        "Countdown",
         "Quiz",
         "BD",
         "Message secret",
+        "Coffre",
         "Audio",
         "Ticket",
         "Lettre",
@@ -36,7 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
             unlock: 'unlock.mp3',
             whoosh: 'whoosh.mp3',
             scratch_loop: 'scratch.mp3',
-            reveal: 'reveal.mp3'
+            reveal: 'reveal.mp3',
+            okay: 'okay.mp3'
         };
         const cooldowns = {};
         const sounds = {};
@@ -148,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- INIT ---
     initParticles();
+    initAmbientFloat();
     initMagicCursor(); // Start Custom Cursor
     // Check if Intro has already been seen this session (optional, but requested for every load here)
     const intro = document.getElementById('cinematic-intro');
@@ -216,9 +218,10 @@ document.addEventListener('DOMContentLoaded', () => {
             case 4: initQuiz(); break;
             case 5: initComicReader(); break;
             case 6: initPuzzle(); break;
-            case 7: initAudio(); break;
-            case 9: initEnvelope(); break;
-            case 10: initFinalCelebration(); break;
+            case 7: initChest(); break;
+            case 8: initAudio(); break;
+            case 10: initEnvelope(); break;
+            case 11: initFinalCelebration(); break;
         }
     }
     function revealNewStep(num) {
@@ -229,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
             step.classList.add('active');
             // Initialize Step Logic AFTER it is visible
             if (num === 2) startTypewriter();
-            if (num === 8) setTimeout(initScratchCard, 100); // 100ms delay to ensure layout is done
+            if (num === 9) setTimeout(initScratchCard, 100); // 100ms delay to ensure layout is done
         }
     }
     // --- STEP 0: LOGIN (Updated with Heart Lock) ---
@@ -489,12 +492,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- STEP 3: TIMER ---
     function startTimer() {
         const btnEnd = document.getElementById('btn-timer-end');
+        const gameWrap = document.getElementById('distance-game');
         const update = () => {
             const now = new Date().getTime();
             const dist = TARGET_DATE - now;
             if (dist < 0) {
                 document.querySelector('.desc').innerText = "C'est l'heure !";
                 document.getElementById('timer').style.display = 'none';
+                if (gameWrap) gameWrap.style.display = 'none';
                 btnEnd.classList.remove('hidden');
                 AudioManager.play('unlock', { volume: 0.3 });
                 return true;
@@ -507,6 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         if (!update()) setInterval(update, 1000);
         document.getElementById('force-skip-timer').onclick = () => showStep(4);
+        if (gameWrap) initDistanceGame();
     }
     // --- STEP 4: DYNAMIC QUIZ ---
     const quizData = [
@@ -577,7 +583,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Simple Text
                 btn.innerText = typeof opt === 'object' ? opt.text : opt;
             }
-            btn.onclick = () => checkDynamicAnswer(btn, index === q.answer);
+            btn.onclick = () => {
+                if (q.question === "Qui est le plus beau/bello ?" && index === 2) {
+                    AudioManager.play('okay', { volume: 0.9, cooldown: 0 });
+                }
+                checkDynamicAnswer(btn, index === q.answer);
+            };
             optionsEl.appendChild(btn);
         });
     }
@@ -707,6 +718,185 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     window.checkPuzzle = checkPuzzle;
+
+    // --- STEP 7: CHEST ---
+    function initChest() {
+        const chest = document.getElementById('chest');
+        const chestWrap = document.getElementById('chest-wrap');
+        const dust = document.getElementById('chest-dust');
+        const itemsWrap = document.getElementById('chest-items');
+        const closeBtn = document.getElementById('chest-close');
+        const contBtn = document.getElementById('chest-continue');
+        const foundEl = document.getElementById('chest-found');
+        const modal = document.getElementById('chest-modal');
+        const modalIcon = document.getElementById('chest-modal-icon');
+        const modalText = document.getElementById('chest-modal-text');
+        const modalExtra = document.getElementById('chest-modal-extra');
+        const modalBack = document.getElementById('chest-modal-back');
+        const items = Array.from(document.querySelectorAll('.chest-item'));
+        if (!chest || !itemsWrap || !foundEl) return;
+
+        let progress = 0;
+        let opened = false;
+        let found = new Set();
+        let lastTap = 0;
+
+        const memories = {
+            ticket: {
+                icon: "🎫",
+                text: "Rétromobile : notre passion en version vraie. Des voitures partout… et moi, juste content d’être avec toi.",
+                sfx: () => AudioManager.play('click_soft', { volume: 0.35 })
+            },
+            shell: {
+                icon: "🐚",
+                text: "La Baule. Le vent. Le sable. Et ce moment. Ce souvenir-là, je le garde fort.",
+                sfx: () => AudioManager.play('sparkle', { volume: 0.3 })
+            },
+            train: {
+                icon: "🚆",
+                text: "Paris ↔ Nantes : des kilomètres… mais jamais loin. Chaque trajet valait tout.",
+                sfx: () => AudioManager.play('whoosh', { volume: 0.3 })
+            },
+            coloring: {
+                icon: "🎨",
+                text: "Un truc simple. Comme nous au début. Tu peux colorier si tu veux… ou juste sourire.",
+                extra: "coloring",
+                sfx: () => AudioManager.play('click_soft', { volume: 0.3 })
+            },
+            sock: {
+                icon: "🧦",
+                text: "Trampoline park : on a tout donné (surtout nos chaussettes). Je crois que j’ai surtout retenu ton rire.",
+                sfx: () => AudioManager.play('boop', { volume: 0.3 })
+            },
+            cherry: {
+                icon: "🍒",
+                text: "🍒 Celle-là… c’est nous. Interdit d’expliquer aux autres.",
+                sfx: () => AudioManager.play('sparkle', { volume: 0.35 })
+            },
+            detective: {
+                icon: "🕵️",
+                text: "Mission : trouver comment te faire sourire. Statut : en cours… mais très bien parti.",
+                extra: "clue",
+                sfx: () => AudioManager.play('ding', { volume: 0.3 })
+            },
+            f1: {
+                icon: "🏁",
+                text: "La F1, c’était le prétexte. Toi, c’était la vraie course.",
+                sfx: () => AudioManager.play('unlock', { volume: 0.25 })
+            }
+        };
+
+        function updateFound() {
+            foundEl.textContent = `${found.size}`;
+            if (found.size >= 8 && contBtn) {
+                contBtn.classList.remove('hidden');
+            }
+            // Unlock cherry after 3 items
+            if (found.size >= 3) {
+                const cherry = document.querySelector('.chest-item[data-id=\"cherry\"]');
+                if (cherry) cherry.classList.remove('locked');
+            }
+        }
+
+        function spawnDust() {
+            if (!dust) return;
+            const p = document.createElement('div');
+            p.className = 'chest-spark';
+            p.style.left = `${20 + Math.random() * 140}px`;
+            p.style.top = `${20 + Math.random() * 60}px`;
+            p.textContent = Math.random() > 0.5 ? '❤' : '✦';
+            dust.appendChild(p);
+            setTimeout(() => p.remove(), 900);
+        }
+
+        function tapChest() {
+            if (opened) return;
+            const now = Date.now();
+            const fast = now - lastTap < 350;
+            lastTap = now;
+            const inc = fast ? (10 + Math.random() * 6) : (8 + Math.random() * 6);
+            progress = Math.min(100, progress + inc);
+            chest.classList.add('chest-animate');
+            setTimeout(() => chest.classList.remove('chest-animate'), 220);
+            spawnDust();
+
+            if (progress >= 30 && progress < 40) AudioManager.play('click_soft', { volume: 0.25 });
+            if (progress >= 60 && progress < 70) {
+                const glow = chest.querySelector('.chest-glow');
+                if (glow) glow.style.opacity = '1';
+                AudioManager.play('sparkle', { volume: 0.2 });
+            }
+            if (progress >= 90 && progress < 100) {
+                const lock = chest.querySelector('.chest-lock');
+                if (lock) lock.classList.add('shake');
+                setTimeout(() => lock && lock.classList.remove('shake'), 240);
+                AudioManager.play('boop', { volume: 0.2 });
+            }
+            if (progress >= 100) openChest();
+        }
+
+        function openChest() {
+            opened = true;
+            chest.classList.add('chest-open');
+            itemsWrap.classList.remove('hidden');
+            celebrate();
+            AudioManager.play('success_chime', { volume: 0.3 });
+        }
+
+        if (chestWrap) chestWrap.addEventListener('click', tapChest);
+
+        items.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.id;
+                const data = memories[id];
+                if (!data) return;
+                found.add(id);
+                updateFound();
+                modalIcon.textContent = data.icon;
+                modalText.textContent = data.text;
+                modalExtra.innerHTML = '';
+                if (data.extra === 'coloring') {
+                    modalExtra.innerHTML = `<canvas id="coloring-canvas" width="220" height="140" style="border:1px solid #eee;border-radius:8px;"></canvas>`;
+                    const cc = modalExtra.querySelector('#coloring-canvas');
+                    const cctx = cc.getContext('2d');
+                    cctx.lineWidth = 2;
+                    cctx.strokeStyle = '#222';
+                    // Simple line art
+                    cctx.beginPath(); cctx.arc(60, 80, 18, 0, Math.PI * 2); cctx.stroke();
+                    cctx.beginPath(); cctx.arc(150, 80, 18, 0, Math.PI * 2); cctx.stroke();
+                    cctx.beginPath(); cctx.moveTo(40, 70); cctx.quadraticCurveTo(110, 20, 180, 70); cctx.stroke();
+                    cctx.beginPath(); cctx.moveTo(40, 98); cctx.lineTo(180, 98); cctx.lineTo(110, 130); cctx.closePath(); cctx.stroke();
+                    const palette = ['#ffb3c7','#bde0fe','#cdb4db','#ffd6a5'];
+                    cc.addEventListener('click', (e) => {
+                        const rect = cc.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        cctx.fillStyle = palette[Math.floor(Math.random()*palette.length)];
+                        cctx.beginPath();
+                        cctx.arc(x, y, 10, 0, Math.PI * 2);
+                        cctx.fill();
+                    });
+                }
+                if (data.extra === 'clue') {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-ghost';
+                    btn.textContent = 'Indice';
+                    btn.onclick = () => { modalText.textContent += " — Indice : ton sourire."; };
+                    modalExtra.appendChild(btn);
+                }
+                if (data.sfx) data.sfx();
+                modal.classList.remove('hidden');
+            });
+        });
+
+        if (closeBtn) closeBtn.addEventListener('click', () => {
+            itemsWrap.classList.add('hidden');
+        });
+        if (modalBack) modalBack.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+        updateFound();
+    }
     // --- STEP 8: SCRATCH CARD (Optimized) ---
     function initScratchCard() {
         const canvas = document.getElementById('scratch-canvas');
@@ -826,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- STEP 10: FINAL ---
     // --- STEP 10: FINAL APOTHEOSIS ---
     function initFinalCelebration() {
-        const step10 = document.getElementById('step-10');
+        const step10 = document.getElementById('step-11');
         // 1. Change Background
         document.body.classList.add('final-mode');
         // 2. Continuous Heart Rain
@@ -874,13 +1064,94 @@ document.addEventListener('DOMContentLoaded', () => {
         const letterTextEl = document.getElementById('typewriter-letter-text');
         const letterContainer = document.getElementById('letter-content');
         let isOpen = false;
-        const fullText = `Mon Amour,
-Je t'écris cette lettre numérique parce que les mots me manquent parfois quand on s'appelle. Je voulais prendre un moment, juste pour nous, pour te dire à quel point tu comptes pour moi.
-Même si des kilomètres nous séparent aujourd'hui, je te sens près de moi à chaque instant. Chaque notification de toi illumine ma journée, chaque photo que tu m'envoies est un trésor, et chaque 'bonne nuit' me permet de dormir un peu mieux.
-Je sais que la distance n'est pas facile. Il y a des soirs où j'aimerais juste pouvoir te serrer dans mes bras, sans rien dire. Mais je sais aussi que ce qu'on vit est rare, précieux, et plus fort que tout ça.
-Merci d'être toi. Merci pour tes rires, ta patience, et tout l'amour que tu me donnes. J'ai tellement hâte de te retrouver pour de vrai.
-Je t'aime, infiniment.
-Ton Valentin.`;
+        const fullText = `Lucille,
+
+Je crois que ce que j’aime le plus chez toi,
+c’est que tu es lumineuse.
+
+Et pas lumineuse dans le sens cliché.
+Lumineuse pour de vrai.
+
+Quand tu es fière de toi, ça se voit tout de suite.
+Tu le répètes dix fois.
+“Mes ongles, mes ongles, mes ongles.”
+Ou “regarde mes cheveux.”
+Et tu pourrais le dire toute la journée.
+
+Et moi je te regarde faire,
+et je me dis que c’est exactement pour ça que je t’aime.
+
+Tu t’allumes d’un coup.
+Tu deviens plus joyeuse, plus vive.
+Comme si tout autour devenait un peu plus clair.
+
+Lux.
+La lumière.
+
+Ça te va trop bien.
+
+J’aime ton regard.
+Il est intense.
+Parfois presque intimidant.
+Quand tu me fixes, j’ai l’impression que tu vois tout.
+
+Tu es forte.
+Vraiment forte.
+Tu ne te laisses pas marcher dessus.
+Tu sais ce que tu veux.
+Tu as de l’ambition, des rêves grands, des projets qui dépassent les kilomètres entre Bessancourt et Sautron.
+
+Tu veux voyager partout.
+Réussir.
+Avoir une belle voiture.
+Te marier à l’église.
+
+Et moi, je trouve ça beau.
+Pas parce que c’est impressionnant.
+Mais parce que c’est toi.
+
+Tu es forte à l’extérieur.
+Mais je sais que tu es plus sensible que tu ne le montres.
+Et j’aime que tu me laisses voir cette partie-là.
+
+Même quand tu es têtue.
+Même quand tu me fais la tête pendant des heures pour une phrase.
+
+Et au début je fais le malin.
+Et à la fin je suis là, un peu perdu,
+parce que j’ai compris que je tiens beaucoup plus que je ne veux l’admettre.
+
+J’aime quand tu rigoles fort.
+À ta manière.
+Pas un rire discret.
+Un vrai rire.
+
+J’aime quand je prédis exactement ce que tu vas dire
+et que tu le dis quand même.
+Et que tu me regardes en mode “ah ok”.
+
+J’aime que tu sois incapable de lâcher ton téléphone…
+sauf quand tu es avec moi.
+
+J’aime que tu me montres que je compte,
+même si parfois tu fais semblant du contraire.
+
+Mon cœur,
+je crois que ce que j’essaie de te dire depuis le début,
+c’est que je ne t’admire pas seulement parce que je t’aime.
+
+Je t’aime aussi parce que je t’admire.
+
+Tu es forte.
+Tu es lumineuse.
+Tu es ambitieuse.
+Tu es drôle.
+Tu es têtue.
+Tu es sensible.
+
+Et tu es toi.
+
+Et moi, je suis vraiment heureux que ce soit toi.`;
         envelope.onclick = () => {
             if (isOpen) return;
             isOpen = true;
@@ -930,6 +1201,314 @@ Ton Valentin.`;
             container.appendChild(p);
         }
     }
+    function initAmbientFloat() {
+        const container = document.getElementById('ambient-float');
+        if (!container) return;
+        const types = ['bubble', 'heart', 'star'];
+        for (let i = 0; i < 38; i++) {
+            const t = types[Math.floor(Math.random() * types.length)];
+            const el = document.createElement('div');
+            el.className = `float-item float-${t}`;
+            const size = t === 'bubble' ? (Math.random() * 46 + 10) : (Math.random() * 18 + 10);
+            el.style.setProperty('--size', `${size}px`);
+            el.style.left = `${Math.random() * 100}%`;
+            el.style.bottom = `${Math.random() * 120 - 10}vh`;
+            el.style.animationDuration = `${Math.random() * 16 + 10}s`;
+            el.style.animationDelay = `${Math.random() * 6}s`;
+            if (t === 'heart') el.textContent = '❤';
+            if (t === 'star') el.textContent = '✦';
+            container.appendChild(el);
+        }
+        // Click-to-spawn (background)
+        document.addEventListener('pointerdown', (e) => {
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
+            const type = Math.random() > 0.5 ? 'heart' : 'star';
+            const el = document.createElement('div');
+            el.className = `float-item float-${type}`;
+            const size = Math.random() * 20 + 12;
+            el.style.setProperty('--size', `${size}px`);
+            const leftPx = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+            const bottomPx = Math.max(0, Math.min(rect.height, rect.bottom - e.clientY));
+            el.style.left = `${leftPx}px`;
+            el.style.bottom = `${bottomPx}px`;
+            el.style.animationDuration = `${Math.random() * 8 + 8}s`;
+            el.style.animationDelay = `0s`;
+            el.textContent = type === 'heart' ? '❤' : '✦';
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 9000);
+        });
+    }
+
+    // --- MINI-GAME: "Evite la distance" (Canvas) ---
+    let gameState = null;
+    function initDistanceGame() {
+        if (gameState) return;
+        const canvas = document.getElementById('distance-canvas');
+        const scoreEl = document.getElementById('game-score');
+        const bestEl = document.getElementById('game-best');
+        const startEl = document.getElementById('game-start');
+        const startBtn = document.getElementById('game-start-btn');
+        const overEl = document.getElementById('game-over');
+        const overScore = document.getElementById('game-over-score');
+        const overBest = document.getElementById('game-over-best');
+        const restartBtn = document.getElementById('game-restart');
+        const muteBtn = document.getElementById('game-mute');
+        if (!canvas || !scoreEl || !bestEl || !overEl) return;
+
+        const ctx = canvas.getContext('2d');
+        const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const bestKey = 'saintval_bestScore';
+        const runsKey = 'saintval_runs';
+        let bestScore = parseInt(localStorage.getItem(bestKey)) || 0;
+        bestEl.textContent = bestScore;
+
+        let w = canvas.width;
+        let h = canvas.height;
+        const player = { x: w / 2, y: h - 36, r: 10, speed: 220 };
+        let obstacles = [];
+        let bonuses = [];
+        let score = 0;
+        let running = false;
+        let lastTime = 0;
+        let spawnTimer = 0;
+        let bonusTimer = 0;
+        let speed = 120;
+        let spawnEvery = 1.1;
+        let invincible = 0;
+
+        const obstacleTypes = ['km', 'train', 'wait', 'calendar'];
+        const colors = {
+            km: '#ffb3c7',
+            train: '#ffd6a5',
+            wait: '#cdb4db',
+            calendar: '#bde0fe'
+        };
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            const cw = rect.width || canvas.parentElement.clientWidth || 360;
+            const ch = rect.height || canvas.parentElement.clientHeight || 480;
+            canvas.width = cw * devicePixelRatio;
+            canvas.height = ch * devicePixelRatio;
+            ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+            w = cw;
+            h = ch;
+            player.x = Math.min(player.x, w - 20);
+            player.y = h - 36;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Controls
+        const keys = {};
+        document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+        document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+        let dragging = false;
+        canvas.addEventListener('pointerdown', (e) => {
+            dragging = true;
+            const rect = canvas.getBoundingClientRect();
+            player.x = e.clientX - rect.left;
+        });
+        window.addEventListener('pointerup', () => { dragging = false; });
+        window.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            const rect = canvas.getBoundingClientRect();
+            player.x = e.clientX - rect.left;
+        });
+
+        function spawnObstacle() {
+            const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+            const size = 18 + Math.random() * 10;
+            obstacles.push({
+                x: Math.random() * (w - size * 2) + size,
+                y: -20,
+                r: size,
+                type
+            });
+        }
+        function spawnBonus() {
+            bonuses.push({
+                x: Math.random() * (w - 20) + 10,
+                y: -20,
+                r: 10,
+                type: 'bonus'
+            });
+        }
+
+        function aabbCircleHit(a, b) {
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            return dist < (a.r + b.r);
+        }
+
+        function drawStars() {
+            for (let i = 0; i < 20; i++) {
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                ctx.beginPath();
+                ctx.arc((i * 37) % w, (i * 59) % h, 1.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = invincible > 0 ? '#ffd1dc' : '#ff2d55';
+            ctx.beginPath();
+            ctx.arc(player.x - 6, player.y, player.r, 0, Math.PI * 2);
+            ctx.arc(player.x + 6, player.y, player.r, 0, Math.PI * 2);
+            ctx.beginPath();
+            ctx.moveTo(player.x - 16, player.y);
+            ctx.lineTo(player.x + 16, player.y);
+            ctx.lineTo(player.x, player.y + 18);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawObstacle(o) {
+            ctx.fillStyle = colors[o.type] || '#fff';
+            ctx.beginPath();
+            ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawBonus(b) {
+            ctx.fillStyle = '#fff2a8';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function update(dt) {
+            // Movement
+            const left = keys['arrowleft'] || keys['a'];
+            const right = keys['arrowright'] || keys['d'];
+            if (left) player.x -= player.speed * dt;
+            if (right) player.x += player.speed * dt;
+            player.x = Math.max(12, Math.min(w - 12, player.x));
+
+            // Score
+            score += dt * 5;
+            scoreEl.textContent = Math.floor(score);
+
+            // Difficulty
+            speed += dt * 1.2;
+            spawnEvery = Math.max(0.5, spawnEvery - dt * 0.01);
+
+            // Spawn obstacles
+            spawnTimer += dt;
+            if (spawnTimer > spawnEvery) {
+                spawnTimer = 0;
+                spawnObstacle();
+                if (Math.random() < 0.15) spawnObstacle();
+            }
+
+            // Spawn bonus
+            bonusTimer += dt;
+            if (bonusTimer > 4 && Math.random() < 0.35) {
+                bonusTimer = 0;
+                spawnBonus();
+            }
+
+            // Move obstacles
+            obstacles.forEach(o => o.y += speed * dt);
+            obstacles = obstacles.filter(o => o.y < h + 40);
+
+            // Move bonuses
+            bonuses.forEach(b => b.y += (speed * 0.7) * dt);
+            bonuses = bonuses.filter(b => b.y < h + 40);
+
+            // Invincibility timer
+            if (invincible > 0) invincible -= dt;
+
+            // Collisions
+            for (const o of obstacles) {
+                if (invincible <= 0 && aabbCircleHit(player, o)) {
+                    endGame();
+                    return;
+                }
+            }
+            for (let i = bonuses.length - 1; i >= 0; i--) {
+                if (aabbCircleHit(player, bonuses[i])) {
+                    bonuses.splice(i, 1);
+                    invincible = 2;
+                    score += 20;
+                    AudioManager.play('sparkle', { volume: 0.2 });
+                }
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, w, h);
+            drawStars();
+            obstacles.forEach(drawObstacle);
+            bonuses.forEach(drawBonus);
+            drawPlayer();
+        }
+
+        function loop(ts) {
+            if (!running) return;
+            if (!lastTime) lastTime = ts;
+            const dt = Math.min(0.033, (ts - lastTime) / 1000);
+            lastTime = ts;
+            if (!document.hidden) {
+                update(dt);
+                render();
+            }
+            requestAnimationFrame(loop);
+        }
+
+        function startGame() {
+            resizeCanvas();
+            obstacles = [];
+            bonuses = [];
+            score = 0;
+            speed = 120;
+            spawnEvery = 1.1;
+            invincible = 0;
+            lastTime = 0;
+            running = true;
+            if (startEl) startEl.classList.add('hidden');
+            overEl.classList.add('hidden');
+            render();
+            requestAnimationFrame(loop);
+            localStorage.setItem(runsKey, (parseInt(localStorage.getItem(runsKey)) || 0) + 1);
+        }
+
+        function endGame() {
+            running = false;
+            const finalScore = Math.floor(score);
+            if (finalScore > bestScore) {
+                bestScore = finalScore;
+                localStorage.setItem(bestKey, bestScore);
+                bestEl.textContent = bestScore;
+            }
+            overScore.textContent = finalScore;
+            overBest.textContent = bestScore;
+            overEl.classList.remove('hidden');
+            AudioManager.play('error_soft', { volume: 0.2 });
+        }
+
+        restartBtn.addEventListener('click', () => startGame());
+        if (startBtn) startBtn.addEventListener('click', () => startGame());
+        if (muteBtn) {
+            const syncIcon = () => { muteBtn.textContent = AudioManager.isMuted() ? '🔇' : '🔊'; };
+            syncIcon();
+            muteBtn.addEventListener('click', () => {
+                initAudioUnlock();
+                AudioManager.setMuted(!AudioManager.isMuted());
+                syncIcon();
+            });
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) running = false;
+            else if (!running) startGame();
+        });
+
+        // Start screen visible by default
+        gameState = { startGame, endGame };
+    }
     function celebrate() {
         confetti({
             particleCount: 100,
@@ -960,36 +1539,36 @@ Ton Valentin.`;
         const totalFrames = 20;
         let currentFrame = 0;
         const captions = [
-            "Il était une fois...",
-            "Une rencontre inattendue.",
-            "Un premier sourire.",
-            "Quelques mots échangés.",
-            "Un café (ou deux).",
-            "Le temps qui s'arrête.",
-            "Les premiers papillons.",
-            "Une balade sous les étoiles.",
-            "Ta main dans la mienne.",
-            "Nos fous rires.",
-            "Ces petits moments...",
-            "Qui deviennent grands.",
-            "Chaque jour avec toi.",
-            "Est une aventure.",
-            "Je me souviens de tout.",
-            "De chaque détail.",
-            "Et je réalise...",
-            "Que c'est toi.",
-            "Encore et toujours.",
-            "Prête pour la suite ? ❤️"
+            "J’ai liké ton TikTok, sans imaginer ce que ça allait déclencher.",
+            "Puis on a commencé à se parler.",
+            "Les messages sont vite devenus quotidiens.",
+            "On a découvert une passion commune.",
+            "Un soir, on s’est appelés pour la première fois.",
+            "L’attente a commencé à compter.",
+            "Paris d’un côté. Nantes de l’autre.",
+            "Les jours passaient, et l’envie grandissait.",
+            "Alors j’ai pris le train pour te voir.",
+            "Le 19 décembre, on s’est enfin rencontrés.",
+            "Paris autour de nous. Et nous deux, sous la Tour Eiffel.",
+            "Une terrasse, des discussions, des sourires.",
+            "On s’est baladés dans Paris, comme si c’était évident.",
+            "On s’est endormis ensemble.",
+            "Puis il a fallu rentrer.",
+            "En janvier, tu es venue à Nantes.",
+            "On a découvert Nantes ensemble.",
+            "Tu as rencontré mes proches.",
+            "Le 16 janvier, à La Baule.",
+            "Je t’ai demandé d’être ma copine."
         ];
         // Generate Frames
         track.innerHTML = '';
         for (let i = 0; i < totalFrames; i++) {
             const panel = document.createElement('div');
             panel.className = 'comic-panel';
-            // Placeholder visuals: Frame number or Image
-            // panel.innerHTML = `<img src="path/to/img${i+1}.jpg" onerror="this.style.display='none'"> <span>Page ${i+1}</span>`;
-            // Simplified for now:
-            panel.innerHTML = `<div style="font-size:3rem">🖼️ ${i + 1}</div>`;
+            const img = document.createElement('img');
+            img.src = `assets/comic/${i + 1}.jpeg`;
+            img.alt = `BD ${i + 1}`;
+            panel.appendChild(img);
             track.appendChild(panel);
         }
         const updateView = () => {
