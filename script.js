@@ -1273,8 +1273,8 @@ Et moi, je suis vraiment heureux que ce soit toi.`;
         let lastTime = 0;
         let spawnTimer = 0;
         let bonusTimer = 0;
-        let speed = 120;
-        let spawnEvery = 1.1;
+        let speed = 165;
+        let spawnEvery = 0.85;
         let invincible = 0;
 
         const obstacleTypes = ['km', 'train', 'wait', 'calendar'];
@@ -1392,7 +1392,7 @@ Et moi, je suis vraiment heureux que ce soit toi.`;
             scoreEl.textContent = Math.floor(score);
 
             // Difficulty
-            speed += dt * 1.2;
+            speed += dt * 2.2;
             spawnEvery = Math.max(0.5, spawnEvery - dt * 0.01);
 
             // Spawn obstacles
@@ -1400,7 +1400,7 @@ Et moi, je suis vraiment heureux que ce soit toi.`;
             if (spawnTimer > spawnEvery) {
                 spawnTimer = 0;
                 spawnObstacle();
-                if (Math.random() < 0.15) spawnObstacle();
+                if (Math.random() < 0.38) spawnObstacle();
             }
 
             // Spawn bonus
