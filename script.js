@@ -759,8 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             coloring: {
                 icon: "🎨",
-                text: "Un truc simple. Comme nous au début. Tu peux colorier si tu veux… ou juste sourire.",
-                extra: "coloring",
+                text: "Un truc simple. Comme nous au début, promis je dépasse pas",
                 sfx: () => AudioManager.play('click_soft', { volume: 0.3 })
             },
             sock: {
@@ -855,28 +854,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 modalIcon.textContent = data.icon;
                 modalText.textContent = data.text;
                 modalExtra.innerHTML = '';
-                if (data.extra === 'coloring') {
-                    modalExtra.innerHTML = `<canvas id="coloring-canvas" width="220" height="140" style="border:1px solid #eee;border-radius:8px;"></canvas>`;
-                    const cc = modalExtra.querySelector('#coloring-canvas');
-                    const cctx = cc.getContext('2d');
-                    cctx.lineWidth = 2;
-                    cctx.strokeStyle = '#222';
-                    // Simple line art
-                    cctx.beginPath(); cctx.arc(60, 80, 18, 0, Math.PI * 2); cctx.stroke();
-                    cctx.beginPath(); cctx.arc(150, 80, 18, 0, Math.PI * 2); cctx.stroke();
-                    cctx.beginPath(); cctx.moveTo(40, 70); cctx.quadraticCurveTo(110, 20, 180, 70); cctx.stroke();
-                    cctx.beginPath(); cctx.moveTo(40, 98); cctx.lineTo(180, 98); cctx.lineTo(110, 130); cctx.closePath(); cctx.stroke();
-                    const palette = ['#ffb3c7','#bde0fe','#cdb4db','#ffd6a5'];
-                    cc.addEventListener('click', (e) => {
-                        const rect = cc.getBoundingClientRect();
-                        const x = e.clientX - rect.left;
-                        const y = e.clientY - rect.top;
-                        cctx.fillStyle = palette[Math.floor(Math.random()*palette.length)];
-                        cctx.beginPath();
-                        cctx.arc(x, y, 10, 0, Math.PI * 2);
-                        cctx.fill();
-                    });
-                }
                 if (data.extra === 'clue') {
                     const btn = document.createElement('button');
                     btn.className = 'btn-ghost';
