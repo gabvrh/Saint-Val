@@ -3,27 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Valentine ❤️</title>
-    
+    <title>Pour Lucille</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%92%96%3C/text%3E%3C/svg%3E">
+
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Dancing+Script:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- UX BAR -->
     <div class="ux-bar">
         <div class="ux-progress">
-            <div class="ux-progress-track">
-                <div id="ux-progress-fill" class="ux-progress-fill"></div>
-            </div>
+            <div class="ux-progress-track"><div id="ux-progress-fill" class="ux-progress-fill"></div></div>
             <div id="ux-progress-label" class="ux-progress-label">Chapitre 1 / 11</div>
         </div>
         <button id="sfx-toggle" class="sfx-toggle" aria-label="Activer/désactiver le son">🔊</button>
     </div>
     <div id="ux-toast" class="ux-toast" aria-live="polite"></div>
-    <!-- CINEMATIC INTRO -->
+
     <div id="cinematic-intro">
         <div class="intro-content">
             <div class="intro-heart"><i class="fa-solid fa-heart"></i></div>
@@ -31,114 +28,123 @@
             <p class="intro-subtitle">Une histoire commence...</p>
         </div>
     </div>
-    <!-- MOVING ORBS BACKGROUND -->
+
     <div id="background-wrap">
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>
         <div class="orb orb-3"></div>
     </div>
     <div class="noise-overlay"></div>
-    
-    <!-- <div class="ambient-light"></div> Removed to avoid conflict -->
-    <div id="particles-js"></div> 
-    
+    <div id="particles-js"></div>
+    <div id="ambient-float" aria-hidden="true"></div>
+
     <div id="music-player" class="glass-panel hidden">
         <button id="music-toggle" class="icon-btn"><i class="fa-solid fa-play"></i></button>
         <div class="music-visualizer">
             <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
         </div>
-        <div class="music-info">
-            <span class="music-title">L-O-V-E</span>
-        </div>
+        <div class="music-info"><span class="music-title">L-O-V-E</span></div>
         <audio id="bg-music" loop>
             <source src="assets/love-electro.mp3" type="audio/mpeg">
         </audio>
     </div>
+
     <main id="app" class="glass-container">
-        <!-- STEP 0: LOGIN -->
         <section id="step-0" class="step active">
-            <div class="lock-container">
-                <i id="lock-icon" class="fa-solid fa-heart"></i>
-            </div>
+            <div class="lock-container"><i id="lock-icon" class="fa-solid fa-heart"></i></div>
             <h1>Une surprise ?</h1>
             <p class="desc">D'abord trouve le code mon chat</p>
-            
             <div class="input-group">
                 <input type="tel" id="password-input" placeholder="••••" maxlength="4" autocomplete="off">
                 <p class="hint">Indice : La Baule</p>
                 <div id="login-error" class="error-msg"></div>
             </div>
-            <!-- Bouton removed for cleaner UI, auto-submit on 4 digits or Enter is better, but keeping simple button logic in JS -->
-            <button id="btn-login" class="btn-primary" style="display:none;">Ouvrir</button> 
+            <button id="btn-login" class="btn-primary" style="display:none;">Ouvrir</button>
         </section>
-        
-        <!-- STEP 1: PROPOSAL -->
+
         <section id="step-1" class="step hidden">
             <h1>Une question...</h1>
             <p class="big-question">Veux-tu être ma Valentine ? 🌹</p>
-            
             <div class="interaction-area" id="no-zone">
                 <button id="btn-yes" class="btn-primary pulse-effect">OUI, avec plaisir ! 😍</button>
                 <button id="btn-no" class="btn-ghost">Non, pas envie</button>
             </div>
             <div id="no-feedback" class="no-feedback" aria-live="polite"></div>
-            <div id="no-hint" class="no-hint">Indice : le bon choix est au milieu ❤️</div>
+            <div id="no-hint" class="no-hint">Indice : le bon choix est à droite ❤️</div>
         </section>
-        <!-- STEP 2: INTRO (Letter Style) -->
+
         <section id="step-2" class="step hidden">
             <div class="icon-header"><i class="fa-regular fa-envelope" style="font-size: 2rem; color: var(--primary); margin-bottom: 20px;"></i></div>
             <h2>Un message pour toi</h2>
             <div class="letter-container">
-                <p id="intro-typed-text"></p>
+                <p id="intro-typed-text"></p><span class="cursor">|</span>
                 <div class="match-progress" id="match-progress">
-                    <div class="match-track">
-                        <div class="match-fill" id="match-fill"></div>
-                    </div>
+                    <div class="match-track"><div class="match-fill" id="match-fill"></div></div>
                     <div class="match-label">Correspondance trouvée : <span id="match-value">0</span>%</div>
                 </div>
                 <div id="intro-final-message" class="intro-final">Bienvenue dans ton espace privé, mon cœur.</div>
             </div>
             <button class="btn-primary hidden next-step" id="btn-intro-next" data-next="3">Lire la suite ✨</button>
         </section>
-        <!-- STEP 3: TIMER -->
+
         <section id="step-3" class="step hidden">
             <h2>Patience... ⏳</h2>
             <p class="desc">La surprise arrive dans :</p>
-            
             <div id="timer" class="timer-grid">
                 <div class="time-card"><span id="days">00</span><label>Jours</label></div>
                 <div class="time-card"><span id="hours">00</span><label>Heures</label></div>
                 <div class="time-card"><span id="minutes">00</span><label>Min</label></div>
                 <div class="time-card"><span id="seconds">00</span><label>Sec</label></div>
             </div>
-            
+            <div id="distance-game" class="distance-game">
+                <div class="game-header">
+                    <h3>En attendant…</h3>
+                    <p class="game-subtitle">Tiens le plus longtemps possible 💛</p>
+                </div>
+                <div class="game-card">
+                    <div class="game-ui">
+                        <div>Score: <span id="game-score">0</span></div>
+                        <div>Record: <span id="game-best">0</span></div>
+                        <button id="game-mute" class="btn-ghost game-mute" type="button">🔊</button>
+                    </div>
+                    <div class="game-canvas-wrap">
+                        <canvas id="distance-canvas" width="360" height="480"></canvas>
+                        <div id="game-start" class="game-over">
+                            <div class="game-over-card">
+                                <div class="game-over-title">Évite la distance</div>
+                                <div class="game-over-sub">Appuie pour commencer 💛</div>
+                                <button id="game-start-btn" class="btn-primary" type="button">Jouer</button>
+                            </div>
+                        </div>
+                        <div id="game-over" class="game-over hidden">
+                            <div class="game-over-card">
+                                <div class="game-over-title">Partie terminée</div>
+                                <div>Score: <span id="game-over-score">0</span></div>
+                                <div>Record: <span id="game-over-best">0</span></div>
+                                <button id="game-restart" class="btn-primary" type="button">Rejouer</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="game-hint">Contrôles: flèches / A-D / glisser</div>
+                </div>
+            </div>
             <button id="btn-timer-end" class="btn-primary hidden pulse-effect next-step" data-next="4">DÉCOUVRIR 🎁</button>
-            <button id="force-skip-timer" class="dev-skip"></button>
+            <button id="force-skip-timer" class="dev-skip">Passer l'attente</button>
         </section>
-        <!-- STEP 4: QUIZ -->
+
         <section id="step-4" class="step hidden">
             <div class="progress-bar"><div id="quiz-progress" class="fill" style="width: 0%"></div></div>
             <h2>Encore un peu de patience mon cœur...</h2>
             <p id="quiz-question" class="question-text">Chargement...</p>
-            
-            <div id="quiz-options" class="quiz-options">
-                <!-- Options will be injected here -->
-            </div>
+            <div id="quiz-options" class="quiz-options"></div>
             <p id="quiz-feedback"></p>
         </section>
-        <!-- STEP 5: COMIC READER (Webtoon Style) -->
+
         <section id="step-5" class="step hidden">
             <h2>Notre Histoire Illustrée 🎨</h2>
-            
             <div id="comic-reader" class="comic-reader">
-                <div class="comic-display-area">
-                    <div id="comic-track" class="comic-track">
-                        <!-- JS generated panels will go here -->
-                    </div>
-                </div>
-                <div class="comic-caption-area">
-                    <p id="comic-caption-text">...</p>
-                </div>
+                <div class="comic-display-area"><div id="comic-track" class="comic-track"></div></div>
+                <div class="comic-caption-area"><p id="comic-caption-text">...</p></div>
                 <div class="comic-controls">
                     <button id="btn-comic-prev" class="btn-nav" disabled>← Précédent</button>
                     <span id="comic-progress">Page 1 / 20</span>
@@ -147,37 +153,74 @@
             </div>
             <button id="btn-comic-end" class="btn-primary hidden pulse-effect next-step" data-next="6" style="margin-top: 20px;">Continuer l'aventure 🎉</button>
         </section>
-        <!-- STEP 6: PUZZLE -->
+
         <section id="step-6" class="step hidden">
             <h2>Message secret 🧩</h2>
             <p class="desc">Reconstitue la phrase :</p>
-            
             <div id="drop-zone" class="puzzle-slot"></div>
             <div id="puzzle-container" class="puzzle-pieces"></div>
-            
             <button id="btn-puzzle-check" class="btn-primary hidden">Valider</button>
         </section>
-        <!-- STEP 7: AUDIO -->
+
         <section id="step-7" class="step hidden">
+            <div class="chest-panel">
+                <h2 class="chest-title">Coffre à souvenirs</h2>
+                <p class="chest-sub">Tape dessus pour l’ouvrir.</p>
+                <p class="chest-hint">(Il faut insister un peu 😌)</p>
+                <div id="chest-wrap" class="chest-wrap">
+                    <div id="chest" class="chest">
+                        <div class="chest-lid"></div>
+                        <div class="chest-base"></div>
+                        <div class="chest-lock"></div>
+                        <div class="chest-glow"></div>
+                    </div>
+                    <div id="chest-dust" class="chest-dust"></div>
+                </div>
+                <div id="chest-status" class="chest-status">Souvenirs découverts : <span id="chest-found">0</span>/8</div>
+                <div id="chest-items" class="chest-items hidden">
+                    <div class="chest-grid">
+                        <button class="chest-item" data-id="ticket">🎫<span>Rétromobile</span></button>
+                        <button class="chest-item" data-id="shell">🐚<span>La Baule</span></button>
+                        <button class="chest-item" data-id="train">🚆<span>Billet</span></button>
+                        <button class="chest-item" data-id="coloring">🎨<span>Coloriage</span></button>
+                        <button class="chest-item" data-id="sock">🧦<span>Trampoline</span></button>
+                        <button class="chest-item locked" data-id="cherry" data-unlock="3">🍒<span>Cerise</span></button>
+                        <button class="chest-item" data-id="detective">🕵️<span>Enquête</span></button>
+                        <button class="chest-item" data-id="f1">🏁<span>F1</span></button>
+                    </div>
+                    <div class="chest-actions">
+                        <button id="chest-close" class="btn-ghost">Fermer le coffre</button>
+                        <button id="chest-continue" class="btn-primary hidden next-step" data-next="8">Continuer 💛</button>
+                    </div>
+                </div>
+            </div>
+            <div id="chest-modal" class="chest-modal hidden">
+                <div class="chest-card">
+                    <div id="chest-modal-icon" class="chest-modal-icon">🎫</div>
+                    <div id="chest-modal-text" class="chest-modal-text"></div>
+                    <div id="chest-modal-extra" class="chest-modal-extra"></div>
+                    <button id="chest-modal-back" class="btn-primary">Retour au coffre</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="step-8" class="step hidden">
             <div class="icon-header"><i class="fa-solid fa-headphones" style="font-size: 2rem; color: var(--primary); margin-bottom: 20px;"></i></div>
             <h2>Écoute ça 🎙️</h2>
             <p>Mets ton volume, c'est pour toi.</p>
-            
             <div class="audio-player-wrapper">
                 <audio id="audio-player" controls style="width: 100%; border-radius: 50px;">
-                    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+                    <source src="assets/AUDIO.mp3" type="audio/mpeg">
                 </audio>
             </div>
-            
             <div id="audio-next-container" class="hidden" style="margin-top: 20px;">
-                <button id="btn-audio-next" class="btn-primary next-step" data-next="8">J'ai écouté ❤️</button>
+                <button id="btn-audio-next" class="btn-primary next-step" data-next="9">J'ai écouté ❤️</button>
             </div>
         </section>
-        <!-- STEP 8: SCRATCH -->
-        <section id="step-8" class="step hidden">
+
+        <section id="step-9" class="step hidden">
             <h2>Surprise ! 🎟️</h2>
             <p class="desc">Gratte pour découvrir ton cadeau.</p>
-            
             <div class="scratch-wrapper">
                 <div id="scratch-reward">
                     <div class="reward-content">
@@ -189,52 +232,48 @@
                 </div>
                 <canvas id="scratch-canvas"></canvas>
             </div>
-            
-            <button id="btn-scratch-next" class="btn-primary hidden next-step" data-next="9">J'adore !</button>
+            <button id="btn-scratch-next" class="btn-primary hidden next-step" data-next="10">J'adore !</button>
         </section>
-        <!-- STEP 9: LETTER REVEAL (Interactive Envelope) -->
-        <section id="step-9" class="step hidden">
+
+        <section id="step-10" class="step hidden">
             <h2>Une lettre pour toi 💌</h2>
-            
             <div class="envelope-container" id="envelope-container">
                 <div class="envelope" id="envelope">
                     <div class="flap"></div>
                     <div class="body"></div>
                     <div class="letter" id="letter-content">
-                        <div class="letter-text" id="typewriter-letter-text">
-                            <!-- Text will be injected by JS via Typewriter effect -->
-                        </div>
+                        <div class="letter-text" id="typewriter-letter-text"></div>
                     </div>
-                    <div class="seal" id="seal">
-                        <i class="fa-solid fa-heart"></i>
+                    <div class="seal" id="seal"><i class="fa-solid fa-heart"></i></div>
+                </div>
+            </div>
+            <button id="btn-letter-next" class="btn-primary hidden pulse-effect next-step" data-next="11" style="margin-top: 40px;">Dernière surprise ✨</button>
+        </section>
+
+        <section id="step-11" class="step hidden">
+            <h1 class="final-title">Happy Valentine's Day ❤️</h1>
+            <div class="phone-scene">
+                <div class="phone-rings" aria-hidden="true"></div>
+                <div class="phone-mock" aria-hidden="true">
+                    <div class="phone-notch"></div>
+                    <div class="phone-screen">
+                        <div class="call-label">Appel entrant</div>
+                        <div class="call-name">Lucille</div>
+                        <div class="call-status">Le téléphone vibre...</div>
                     </div>
                 </div>
             </div>
-            <button id="btn-letter-next" class="btn-primary hidden pulse-effect next-step" data-next="10" style="margin-top: 40px;">Dernière surprise ✨</button>
-        </section>
-        <!-- STEP 10: FINAL -->
-        <section id="step-10" class="step hidden">
-            <h1 class="final-title">Happy Valentine's Day ❤️</h1>
-            
-            <div class="video-container-styled">
-                <!-- Replace src with your actual video or keep placeholder -->
-                <iframe src="" 
-                        title="Notre vidéo" frameborder="0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen>
-                </iframe>
-            </div>
             <div class="final-cta">
                 <p class="final-message">Maintenant... j'attends ta voix.</p>
-                <a href="tel:0618530070" class="btn-call-heartbeat">
-                    <i class="fa-solid fa-phone fa-shake"></i> Appelle-moi
-                </a>
+                <a href="tel:0618530070" class="btn-call-heartbeat"><i class="fa-solid fa-phone fa-shake"></i> Appelle-moi</a>
             </div>
         </section>
     </main>
+
     <div class="settings-panel">
         <button id="dev-reset-btn" title="Reset Tout"><i class="fa-solid fa-rotate-right"></i></button>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
