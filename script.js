@@ -585,7 +585,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             btn.onclick = () => {
                 if (q.question === "Qui est le plus beau/bello ?" && index === 2) {
-                    AudioManager.play('okay', { volume: 0.9, cooldown: 0 });
+                    AudioManager.play('okay', { volume: 1, cooldown: 0 });
                 }
                 checkDynamicAnswer(btn, index === q.answer);
             };
